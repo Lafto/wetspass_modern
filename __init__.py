@@ -8,7 +8,7 @@ Original authors (2016): K. Abdollahi, I. Bashir, O. Batelaan (VUB).
 Modernization (2026):    M. G. Gurmu <mggurmu@gmail.com>
 """
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __author__ = "M. G. Gurmu"
 __email__ = "mggurmu@gmail.com"
 

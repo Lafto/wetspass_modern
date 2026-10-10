@@ -1,22 +1,188 @@
 [general]
 name=WetSpass-M Modern
-description=Spatially distributed monthly water balance model. Calculates groundwater recharge, evapotranspiration, runoff and interception using GeoTIFF inputs. Calculation logic is identical to WetSpass-M 2016; only I/O is modernized.
-about=Modernized version of WetSpass-M 2016 (IronPython/.NET) rewritten in pure Python with GeoTIFF I/O and QGIS Processing integration.
-
-Original authors (WetSpass-M 2016):
-  K. Abdollahi, I. Bashir, O. Batelaan — Vrije Universiteit Brussel
-
-Modernization:
-  M. G. Gurmu, 2026
-  Email: mggurmu@gmail.com
-
-version=2.0.0
+description=Spatially distributed monthly water balance model for QGIS. Estimates groundwater recharge, evapotranspiration, surface runoff, and interception using GeoTIFF inputs. Adds a dynamic soil-water bucket to the original Wetspass-M 2016 physics, with automatic spin-up convergence detection, focused recharge along ephemeral streams, a climate-zone-based recharge cap, and polygon-based output cropping.
+about=WetSpass-M Modern is a modernized version of the original Wetspass-M 2016 model (Abdollahi, Bashir & Batelaan, Vrije Universiteit Brussel). It estimates diffuse and focused groundwater recharge, evapotranspiration, surface runoff, and interception at monthly, seasonal, and annual time steps.
+    The modernization preserves the original physics but adds:
+    - A dynamic soil-water bucket (soil moisture carried forward between months) replacing the original quasi-steady-state assumption. Essential for seasonally-concentrated rainfall regimes such as monsoonal, Mediterranean, and semi-arid climates.
+    - An ET cap at (P - runoff) instead of P, ensuring the catchment-scale mass balance closes exactly.
+    - Groundwater-fed ET reported separately as Cell_gw_discharge, outside the precipitation balance.
+    - Nodata-preserving aggregation so annual rasters share the same valid-cell mask.
+    - Automatic spin-up with convergence detection (mean |dS| compared to max(1 mm, 0.5%% of mean annual P), with a 5%% tolerance margin so residuals on the numerical noise floor are recognised as converged).
+    - Automatic checkpointing after every completed month, so a power loss or drive disconnection resumes where it stopped.
+    - A Skip to final cycle button on the Progress tab, so a run that has essentially converged can jump straight to the final output cycle without waiting for the spinner count.
+    - A dedicated Water Balance tab with explicit dS and an acceptability verdict.
+    - A Wetspass-M 2016 compatibility mode for validation against legacy results.
+    - A Focused Recharge module for streambed infiltration along ephemeral stream networks.
+    - A user-selectable combine method for diffusive + focused recharge: Addition (default), Replace-by-max (conservative), or Focused-over-diffusive.
+    - A physical cap on total recharge derived automatically from mean annual precipitation and the standard climate-zone reference table (Arid to Extreme cloud forest). Includes a Preview button that reports, without writing anything to disk, how many cells a given cap would clip.
+    - Rainfall-driven climate-regime auto-selection (P < 300 arid; 300-700 semi-arid; 700-1200 mixed; >= 1200 humid). The gwdepth-based classifier remains available as a secondary cross-check.
+    - A Crop outputs to boundary tool that replaces the failing QGIS gdal:rasterize workflow. Presents a file-selection dialog with filter and quick-select buttons, auto-reprojects the boundary vector to each raster's CRS, retains edge pixels with all_touched=True, and writes cropped copies to a cropped_to_boundary/ subfolder. Originals are never modified.
+    Inputs: 12 monthly climate rasters (rainfall, PET, temperature, wind, groundwater depth), a DEM, land use, soil, and optional slope. Outputs: monthly, seasonal, and annual GeoTIFFs of every flux, plus a per-month summary table.
+    Original authors (Wetspass-M 2016):
+    K. Abdollahi, I. Bashir, O. Batelaan - Vrije Universiteit Brussel
+    Modernization:
+    M. G. Gurmu
+    Email: mggurmu@gmail.com
+version=2.1.0
 qgisMinimumVersion=3.28
-qgisMaximumVersion=3.99
+qgisMaximumVersion=4.99
 author=M. G. Gurmu
 email=mggurmu@gmail.com
-repository=https://github.com/your-repo/wetspass-modern
-tracker=https://github.com/your-repo/wetspass-modern/issues
+repository=https://github.com/Lafto/wetspass_modern
+tracker=https://github.com/Lafto/wetspass_modern/issues
+homepage=https://github.com/Lafto/wetspass_modern
+category=Raster
+icon=icon.png
+experimental=False
+deprecated=False
+tags=water balance,groundwater recharge,evapotranspiration,runoff,hydrology,water resources,wetspass,recharge,soil moisture,modelling,raster,climate,spatial analysis,monthly,groundwater,streamflow,focused recharge,cropping,climate cap
+changelog=2.1.0 — Boundary cropping, climate cap, focused-recharge fixes
+    2026-10-XX
+    NEW - Crop outputs to boundary tool
+    - Replaces the failing QGIS gdal:rasterize "Mask rasters" workflow,
+      which frequently errors with "Duplicate argument -ot" or silent
+      CRS-mismatch failures.
+    - File-selection dialog lists every .tif in the output folder,
+      grouped by variable and period, with a live filter box, Select
+      all / none / invert quick buttons, an "Only annual" selector,
+      and an "Only Recharge" selector. A running counter shows how
+      many files are selected.
+    - Auto-reprojects the boundary vector to each raster's CRS
+      (cached per unique CRS, so reprojection happens once per CRS
+      rather than once per file).
+    - Uses all_touched=True so edge pixels are retained. Critical for
+      hydrological water-balance closure.
+    - Writes cropped copies to output_dir/cropped_to_boundary/. The
+      original rasters are never modified.
+    - Runs on a background QThread so the GUI stays responsive.
+      Progress is reported in the tab's progress bar and log.
+    NEW - Physical cap on total recharge, derived from mean annual P
+    - "Recompute from inputs" reads rain1.tif ... rain12.tif from the
+      working directory and computes mean annual precipitation.
+    - Classifies P into one of five climate zones using the standard
+      reference table (Arid, Semi-arid, Humid temperate, Wet tropical,
+      Extreme cloud forest / karst) with recharge fractions of
+      1-5 %%, 5-15 %%, 20-35 %%, 30-50 %%, and 40-60 %% respectively.
+    - Recommended cap = upper bound of the plausible recharge fraction
+      for the matched zone (frac_max x mean_P). This never clips
+      legitimate recharge.
+    - Optional override with a user-entered custom value.
+    - "Preview cap effect" button runs a read-only scan over the
+      combine inputs and reports, without writing any file, the
+      number of valid cells, before/after min-mean-max, the number of
+      cells that would be clipped, the mean drop across all cells,
+      and a binned distribution of clipped values (1-1.5x, 1.5-2x,
+      2-5x, 5-10x, 10-50x, 50-100x, 100x+ the cap).
+    NEW - User-selectable combine method for diffusive + focused
+    - Addition (default): R_total = R_diffusive + R_focused.
+      Correct when the two mechanisms are physically independent
+      pathways, which is the standard WetSpass-M assumption.
+    - Replace-by-max (conservative):
+      R_total = max(R_diffusive, R_focused). Avoids any risk of
+      double-counting, at the cost of a systematic underestimate at
+      every stream cell.
+    - Focused-over-diffusive: R_focused on stream cells, R_diffusive
+      elsewhere. For users who believe the diffusive model already
+      includes some streambed loss.
+    NEW - Optional capped focused raster output
+    - When the cap is enabled and the "Also write capped focused
+      raster" box is ticked, a separate file
+      Recharge_focused_annual_capped.tif is written alongside the
+      total. The original focused raster is never overwritten.
+    NEW - Climate regime auto-selected from rainfall
+    - P < 300 mm/yr        -> Arid
+    - 300 <= P < 700       -> Semi-arid
+    - 700 <= P < 1200      -> Mixed / transitional
+    - P >= 1200            -> Humid
+    - The gwdepth-based classifier is retained as a secondary
+      cross-check. The button is relabelled "Auto-detect from
+      gwdepth (secondary)".
+    FIX - Focused recharge broadcast error
+    - "operands could not be broadcast together with shapes..." when
+      the soil-derived Ks raster had a different shape from the D8
+      hydrology grid. The soil raster is now resampled to the D8
+      grid before Ks lookup.
+    FIX - Focused recharge mass balance
+    - Infiltration at a streambed cell can no longer exceed the water
+      physically available at that cell. This removes the 12,000+
+      mm/yr outliers that previously contaminated
+      Recharge_Total_annual.tif.
+    FIX - Focused recharge depth cap
+    - The annual focused raster now respects max_daily_depth_mm x
+      flow_days per month before summing.
+    FIX - Channel-width rasterization
+    - Removed the duplicate -ot flag from the gdal:rasterize call
+      used to build the channel-width raster. This eliminates the
+      "ERROR 1: Duplicate argument -ot" error that blocked
+      width-raster generation on some QGIS builds.
+    DOC - User guide updated to 2.1.0
+    - New chapter "Crop outputs to boundary".
+    - Rewritten Focused Recharge chapter covering the combine
+      methods, the climate-based cap, and the preview tool.
+    - New troubleshooting entries for the crop tool and the
+      climate-cap workflow.
+    - Updated file listing to include core/cropper.py.
+
+    2.0.5 — Resume, pause, and convergence improvements
+    2026-10-06
+    - Fixed a bug where a disk error (external drive disconnect, power
+      loss, or unexpected shutdown) overwrote the good checkpoint with
+      a stale one that said "resume from month 1", forcing a full
+      restart on Resume. The workflow now preserves the checkpoint
+      written after the last completed month, so Resume picks up at
+      the exact month and block where it stopped.
+    - Added read-side retries. A transient input-drive disconnect
+      during a read is now retried up to three times before the run
+      pauses cleanly, instead of crashing with a hard I/O error.
+    - Added a "Skip to final cycle" button on the Progress tab.
+      Once the soil-water bucket has essentially converged, you can
+      press it to abandon the remaining spin-up cycles and jump
+      straight to the final output cycle. The current cycle finishes
+      cleanly, then the workflow proceeds to the final pass.
+    - Added a 5 percent tolerance margin to the convergence test, so
+      residuals sitting on the numerical noise floor are recognised
+      as converged. This prevents the workflow from running an extra
+      spin-up cycle when the bucket is already at equilibrium.
+    - Fixed the Cancel button being inactive during a run. Cancel and
+      Pause are now enabled as soon as the worker starts.
+    - Pause now checks the pause flag between individual block writes
+      as well as at the start of each block, so the run stops within
+      one write instead of waiting for a whole block to complete.
+    - Added a "Resuming from checkpoint" line to the Progress log so
+      the resume position is visible.
+    - Fixed duplicate "[Check Inputs]" log lines. Auto-checks
+      triggered by switching to the Check Inputs tab or changing the
+      working directory no longer write to the run log; only an
+      explicit Check Inputs click does.
+    - Pass 1 (static lookups) no longer rebuilds on every resume
+      when the user supplies their own slope raster on the Inputs
+      tab. The workflow now correctly recognises the supplied slope
+      raster and skips the redundant Pass 1 rebuild.
+    - Simulated.tbl is now appended to, rather than truncated, when
+      a run is resumed. Months written before the pause are preserved
+      in the final file.
+    - The status bar no longer duplicates the full log line; it shows
+      a short summary of the most recent message.
+    - QGIS 4 readiness: qgisMaximumVersion raised to 4.99, so the
+      plugin is listed on the QGIS 4 Ready Plugins page.
+    - Full Qt6 compatibility: all Qt enums are fully scoped. Loads
+      cleanly in Qt5 and Qt6 without deprecation warnings.
+    - Replaced all remaining try/except/pass and try/except/continue
+      blocks with contextlib.suppress or a small helper function
+      across wetspass_plugin.py, ui/main_dialog.py,
+      ui/water_balance_tab.py, ui/worker.py, core/raster_io.py,
+      core/stream_io.py, and core/workflow.py. Fixes Flake8 B110
+      and B112.
+    - Renamed the ambiguous loop variable 'l' to 'line' in
+      ui/water_balance_tab.py. Fixes Flake8 E741.
+    - Replaced subprocess.Popen with QDesktopServices.openUrl for the
+      "Show in folder" button. Fixes Bandit B603/B607 without needing
+      suppression comments.
+    - Fixed metadata.txt continuation-line indentation and escaped
+      literal percent signs so the repository parser accepts the file.
+    - No functional or numerical changes to the model physics. Model
+      results are identical to 2.0.2 for the same inputs and starting
+      state.
 
 [extras]
 hasProcessingProvider=yes

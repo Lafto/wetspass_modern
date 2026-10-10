@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """WetSpass-M Modern — QGIS plugin main class."""
 
+import contextlib
 from pathlib import Path
 
 from qgis.PyQt.QtGui import QIcon
@@ -48,11 +49,10 @@ class WetSpassPlugin:
             QgsApplication.processingRegistry().removeProvider(self.provider)
             self.provider = None
         # Clean up the dialog's event filter and any running worker.
+        # Bandit B110 fix: contextlib.suppress instead of try/except/pass.
         if self.dialog is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self.dialog.cleanup()
-            except Exception:
-                pass
             self.dialog = None
 
     def open_dialog(self):
