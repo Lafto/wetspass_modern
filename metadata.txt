@@ -1,0 +1,68 @@
+[general]
+name=WetSpass-M Modern
+description=Spatially distributed monthly water balance model for QGIS. Estimates groundwater recharge, evapotranspiration, surface runoff, and interception using GeoTIFF inputs. Adds a dynamic soil-water bucket to the original Wetspass-M 2016 physics, with automatic spin-up convergence detection, focused recharge along ephemeral streams, a climate-zone-based recharge cap, and polygon-based output cropping.
+about=WetSpass-M Modern is a modernized version of the original Wetspass-M 2016 model (Abdollahi, Bashir & Batelaan, Vrije Universiteit Brussel). It estimates diffuse and focused groundwater recharge, evapotranspiration, surface runoff, and interception at monthly, seasonal, and annual time steps.
+    The modernization preserves the original physics but adds:
+    - A dynamic soil-water bucket replacing the original quasi-steady-state assumption.
+    - An ET cap at (P - runoff) instead of P, ensuring the catchment-scale mass balance closes exactly.
+    - Groundwater-fed ET reported separately as Cell_gw_discharge.
+    - Nodata-preserving aggregation so annual rasters share the same valid-cell mask.
+    - Automatic spin-up with convergence detection (mean |dS| compared to max(1 mm, 0.5%% of mean annual P)).
+    - Automatic checkpointing after every completed month.
+    - A Skip to final cycle button on the Progress tab.
+    - A dedicated Water Balance tab with explicit dS and an acceptability verdict.
+    - A Focused Recharge module for streambed infiltration along ephemeral stream networks.
+    - A user-selectable combine method for diffusive + focused recharge.
+    - A Crop outputs to boundary tool.
+    - A River Conductance module for MODFLOW 6 integration.
+    Inputs: 12 monthly climate rasters, a DEM, land use, soil, optional slope, and optional geology.
+    Outputs: monthly, seasonal, and annual GeoTIFFs of every flux, plus a per-month summary table.
+    Original authors (Wetspass-M 2016):
+    K. Abdollahi, I. Bashir, O. Batelaan - Vrije Universiteit Brussel
+    Modernization:
+    M. G. Gurmu
+    Email: mggurmu@gmail.com
+version=2.4.1
+doi=10.5281/zenodo.23757595
+qgisMinimumVersion=3.28
+qgisMaximumVersion=4.99
+author=Melese G. Gurmu
+email=mggurmu@gmail.com
+repository=https://github.com/Lafto/wetspass_modern
+tracker=https://github.com/Lafto/wetspass_modern/issues
+homepage=https://github.com/Lafto/wetspass_modern
+category=Raster
+icon=icon.png
+experimental=False
+deprecated=False
+tags=water balance,groundwater recharge,evapotranspiration,runoff,hydrology,water resources,wetspass,recharge,soil moisture,modelling,raster,climate,spatial analysis,monthly,groundwater,streamflow,focused recharge,cropping,climate cap,modflow
+changelog=
+    2.4.1 (2026-10-25)
+    - Added instant 'Skip to Final Cycle' that aborts the current month/block.
+    - Enabled 'Run' button during paused states to allow starting fresh runs.
+    - Default spin-up cycles increased to 30 (safe due to early convergence exit).
+    - Added Geology Map input and Grid consistency checks.
+    - Fixed mass balance closure issues in humid lake catchments.
+    
+    2.4.0 (2026-10-25)
+    - Added "River Conductance" tab for MODFLOW 6 RIV package integration.
+    - Implemented Field-Anchored Geomorphic Scaling for conductance, depth, width, and stage.
+    - Added Stream Typology weighting (Perennial, Intermittent, Ephemeral).
+    - Added automatic Gaining/Losing stream classification based on streambed vs water table elevation.
+    - Added export of MODFLOW-ready CSV tables with absolute Stage and Rbot elevations.
+    - Implemented Multi-Flow Direction (MFD) hydrology engine for accurate stream routing in flat areas.
+    - Added Smart Cache clearing for GWD capping.
+    - Beautified UI (Green Run button, formula reference box, green progress bars).
+
+    2.1.2 — Hybrid ET, bucket floor, reconciled closure
+    2026-10-14
+    - Hybrid ET bank. The root-zone water term used in the ET formula now interpolates between the modern small-bank factor (x10) and the original Wetspass-M 2016 large-bank factor (x1000) based on how full the soil bucket is.
+    - Minimum bucket capacity floor of 50 mm. Prevents thin-soil cells from overflowing on every rain event and producing spurious recharge.
+    - Water Balance tab now reconciles focused recharge correctly.
+
+[extras]
+hasProcessingProvider=yes
+
+[author]
+name=M. G. Gurmu
+email=mggurmu@gmail.com

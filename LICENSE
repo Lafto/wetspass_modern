@@ -1,0 +1,22 @@
+WetSpass-M Modern — Academic Use License
+========================================
+
+This software is a modernized version of WetSpass-M 2016, originally developed by:
+
+    K. Abdollahi   <kabdolla@vub.ac.be>
+    I. Bashir      <imtiaz.bashir@vub.ac.be>
+    O. Batelaan    <batelaan@vub.ac.be>
+
+    Dept. of Hydrology and Hydraulic Engineering,
+    Vrije Universiteit Brussel.
+
+The WetSpass model and its interface are freely available upon request for
+ACADEMIC USE. With academic use, it is implied for use by students for course
+or thesis work and by researchers for academic purposes. For other purposes
+or in case of doubt, permission should be obtained from the original authors.
+
+Use of WetSpass has to be acknowledged in reports, conference proceedings and
+journal papers, giving co-authorship to K. Abdollahi, I. Bashir, and O. Batelaan.
+
+Modernization (2026) by M. G. Gurmu <mggurmu@gmail.com> preserves the exact
+calculation logic of the original model; only I/O has been modernized.
